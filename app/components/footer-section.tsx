@@ -2,9 +2,9 @@ import Image from "next/image"
 
 export function FooterSection() {
   return (
-    <footer className="bg-gray-900 text-white py-12">
-      <div className="container mx-auto px-4">
-        <div className="grid md:grid-cols-5 gap-8 mb-8">
+    <footer className="bg-gray-900 text-white py-12 sm:py-16">
+      <div className="container mx-auto px-6 sm:px-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-6 sm:gap-8 mb-6 sm:mb-8">
           <div className="md:col-span-2">
             <Image
               src="/commence-logo.png"

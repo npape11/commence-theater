@@ -128,16 +128,16 @@ const iconMap = {
 
 export function FeaturesSection() {
   return (
-    <section id="features" className="container mx-auto px-4 py-16 bg-white/50 backdrop-blur-sm">
-      <div className="text-center mb-12">
-        <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">Built for Theater Operations</h2>
-        <p className="text-lg text-gray-600 max-w-2xl mx-auto">
+    <section id="features" className="container mx-auto px-4 py-12 sm:py-16 bg-white/50 backdrop-blur-sm">
+      <div className="text-center mb-8 sm:mb-12">
+        <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-gray-900 mb-3 sm:mb-4">Built for Theater Operations</h2>
+        <p className="text-base sm:text-lg text-gray-600 max-w-2xl mx-auto px-4">
           Every feature designed specifically for theaters, from box office management to patron relationships and show
           operations.
         </p>
       </div>
 
-      <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-7xl mx-auto">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 max-w-7xl mx-auto">
         {features.map((feature) => {
           const IconComponent = iconMap[feature.icon as keyof typeof iconMap] || Ticket
           return (
@@ -150,9 +150,9 @@ export function FeaturesSection() {
                     </Badge>
                   )}
                   <IconComponent
-                    className={`h-12 w-12 ${feature.color} mx-auto mb-4 group-hover:scale-110 transition-transform`}
+                    className={`h-8 w-8 sm:h-12 sm:w-12 ${feature.color} mx-auto mb-3 sm:mb-4 group-hover:scale-110 transition-transform`}
                   />
-                  <CardTitle className="text-xl group-hover:text-purple-600 transition-colors">
+                  <CardTitle className="text-lg sm:text-xl group-hover:text-purple-600 transition-colors">
                     {feature.title}
                   </CardTitle>
                 </CardHeader>
@@ -168,7 +168,7 @@ export function FeaturesSection() {
         })}
       </div>
 
-      <div className="text-center mt-12">
+      <div className="text-center mt-8 sm:mt-12">
         <p className="text-gray-600 mb-4">Ready to revolutionize your theater operations?</p>
         <a href="#waitlist" className="inline-flex items-center text-purple-600 hover:text-purple-700 font-medium">
           Join the waitlist for early access

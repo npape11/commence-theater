@@ -176,13 +176,13 @@ export function WaitlistForm({ foundersRemaining }: WaitlistFormProps) {
 
   return (
     <Card className="w-full max-w-md mx-auto">
-      <CardHeader>
-        <CardTitle>Join the Theater Revolution</CardTitle>
-        <CardDescription>
+      <CardHeader className="px-4 sm:px-6">
+        <CardTitle className="text-xl sm:text-2xl">Join the Theater Revolution</CardTitle>
+        <CardDescription className="text-sm sm:text-base">
           Be among the first to experience theater management software built for the modern age
         </CardDescription>
       </CardHeader>
-      <CardContent>
+      <CardContent className="px-4 sm:px-6">
         <form onSubmit={handleSubmit} className="space-y-4" noValidate>
           <div className="space-y-2">
             <Label htmlFor="name">

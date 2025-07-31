@@ -9,15 +9,19 @@ export function HeroButtons() {
   }
 
   return (
-    <div className="flex flex-col sm:flex-row gap-4 justify-center mb-12">
-      <Button size="lg" className="text-lg px-8 py-3 bg-purple-600 hover:bg-purple-700" onClick={scrollToWaitlist}>
+    <div className="flex flex-col sm:flex-row gap-4 sm:gap-6 justify-center mb-8 sm:mb-12 px-4">
+      <Button 
+        size="lg" 
+        className="text-base sm:text-lg px-8 sm:px-10 py-3 sm:py-4 bg-purple-600 hover:bg-purple-700 min-w-[200px] sm:min-w-[220px]" 
+        onClick={scrollToWaitlist}
+      >
         Get Early Access
-        <ArrowRight className="ml-2 h-5 w-5" />
+        <ArrowRight className="ml-3 h-4 w-4 sm:h-5 sm:w-5" />
       </Button>
       <Button
         variant="outline"
         size="lg"
-        className="text-lg px-8 py-3 border-purple-200 text-purple-700 hover:bg-purple-50 bg-transparent"
+        className="text-base sm:text-lg px-8 sm:px-10 py-3 sm:py-4 border-purple-200 text-purple-700 hover:bg-purple-50 bg-transparent min-w-[200px] sm:min-w-[220px]"
       >
         Watch Demo
       </Button>

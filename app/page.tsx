@@ -28,20 +28,24 @@ export default async function Home() {
   const { count: foundersClaimed, remaining: foundersRemaining } = await getFoundersCount()
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-indigo-50">
-      <Navbar />
+    <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-indigo-50 overflow-x-hidden">
+      <div className="max-w-[100vw]">
+        <Navbar />
 
-      <HeroSection foundersClaimed={foundersClaimed} foundersRemaining={foundersRemaining} />
+        <HeroSection foundersClaimed={foundersClaimed} foundersRemaining={foundersRemaining} />
 
-      <ProblemSection />
+        <ProblemSection />
 
-      <FeaturesSection />
+        <div className="mb-24">
+          <FeaturesSection />
+        </div>
 
-      <WaitlistSection foundersRemaining={foundersRemaining} />
+        <WaitlistSection foundersRemaining={foundersRemaining} />
 
-      <AboutSection />
+        <AboutSection />
 
-      <FooterSection />
+        <FooterSection />
+      </div>
     </div>
   )
 }
