@@ -1,13 +1,8 @@
 import { Building2, Users, TrendingUp } from "lucide-react"
-import { FoundersBadgeHybrid } from "./founders-badge-hybrid"
+import { FoundersBadgeRealtime } from "./founders-badge-realtime"
 import { HeroButtons } from "./hero-buttons"
 
-interface HeroSectionProps {
-  foundersClaimed: number
-  foundersRemaining: number
-}
-
-export function HeroSection({ foundersClaimed, foundersRemaining }: HeroSectionProps) {
+export function HeroSection() {
   return (
     <section className="container mx-auto px-4 py-12 sm:py-16 md:py-24">
       <div className="text-center max-w-4xl mx-auto">
@@ -31,9 +26,9 @@ export function HeroSection({ foundersClaimed, foundersRemaining }: HeroSectionP
         {/* Client component only for button interactions */}
         <HeroButtons />
 
-        {/* Hybrid component - server rendered initially, then real-time updates */}
+        {/* Realtime founders count */}
         <div className="max-w-md mx-auto mb-12 sm:mb-16 px-4">
-          <FoundersBadgeHybrid initialClaimed={foundersClaimed} initialRemaining={foundersRemaining} />
+          <FoundersBadgeRealtime />
         </div>
 
         {/* Static social proof - Server rendered */}

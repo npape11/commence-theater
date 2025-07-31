@@ -1,10 +1,6 @@
 import { WaitlistForm } from "./waitlist-form"
 
-interface WaitlistSectionProps {
-  foundersRemaining: number
-}
-
-export function WaitlistSection({ foundersRemaining }: WaitlistSectionProps) {
+export function WaitlistSection() {
   return (
     <section id="waitlist" className="container mx-auto px-4 py-12 sm:py-16">
       <div className="text-center mb-8 sm:mb-12">
@@ -15,7 +11,7 @@ export function WaitlistSection({ foundersRemaining }: WaitlistSectionProps) {
         </p>
       </div>
 
-      <WaitlistForm foundersRemaining={foundersRemaining} />
+      <WaitlistForm />
     </section>
   )
 }

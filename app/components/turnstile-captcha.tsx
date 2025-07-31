@@ -9,7 +9,7 @@ interface TurnstileCaptchaProps {
 
 declare global {
   interface Window {
-    turnstile: {
+    turnstile?: {
       render: (
         container: string | HTMLElement,
         options: {
@@ -20,62 +20,69 @@ declare global {
           theme?: 'light' | 'dark'
           size?: 'normal' | 'compact'
         }
-      ) => void
+      ) => string
+      remove: (widgetId: string) => void
     }
   }
 }
 
+const TURNSTILE_SITE_KEY = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY || ''
+
 export function TurnstileCaptcha({ onVerify, onError }: TurnstileCaptchaProps) {
   const containerRef = useRef<HTMLDivElement>(null)
-  const [isLoaded, setIsLoaded] = useState(false)
-  const [isVerified, setIsVerified] = useState(false)
+  const widgetIdRef = useRef<string>("")
+  const [isScriptLoaded, setIsScriptLoaded] = useState(false)
+  const scriptId = 'cf-turnstile-script'
 
+  // Load script
   useEffect(() => {
-    // Load Turnstile script
+    const existingScript = document.getElementById(scriptId)
+    if (existingScript) {
+      setIsScriptLoaded(true)
+      return
+    }
+
     const script = document.createElement('script')
     script.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js'
+    script.id = scriptId
     script.async = true
     script.defer = true
-    script.onload = () => {
-      setIsLoaded(true)
-    }
+    script.onload = () => setIsScriptLoaded(true)
     document.head.appendChild(script)
 
     return () => {
-      // Cleanup script if component unmounts
-      const existingScript = document.querySelector('script[src*="turnstile"]')
-      if (existingScript) {
-        existingScript.remove()
+      if (widgetIdRef.current && window.turnstile?.remove) {
+        try {
+          window.turnstile.remove(widgetIdRef.current)
+          widgetIdRef.current = ""
+        } catch (error) {
+          console.error('Error removing Turnstile widget:', error)
+        }
       }
     }
   }, [])
 
+  // Render widget (only once)
   useEffect(() => {
-    if (isLoaded && containerRef.current && !isVerified) {
-      try {
-        window.turnstile.render(containerRef.current, {
-          sitekey: process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY!,
-          callback: (token: string) => {
-            setIsVerified(true)
-            onVerify(token)
-          },
-          'expired-callback': () => {
-            setIsVerified(false)
-            onError()
-          },
-          'error-callback': () => {
-            setIsVerified(false)
-            onError()
-          },
-          theme: 'light',
-          size: 'normal',
-        })
-      } catch (error) {
-        console.error('Turnstile render error:', error)
-        onError()
-      }
+    if (!isScriptLoaded || !containerRef.current || !window.turnstile) return
+
+    // Prevent duplicate renders
+    if (widgetIdRef.current) return
+
+    try {
+      widgetIdRef.current = window.turnstile.render(containerRef.current, {
+        sitekey: TURNSTILE_SITE_KEY,
+        callback: onVerify,
+        'expired-callback': onError,
+        'error-callback': onError,
+        theme: 'light',
+        size: 'normal',
+      })
+    } catch (error) {
+      console.error('Error rendering Turnstile:', error)
+      onError()
     }
-  }, [isLoaded, onVerify, onError, isVerified])
+  }, [isScriptLoaded, onVerify, onError])
 
   return (
     <div className="space-y-2">
@@ -87,7 +94,7 @@ export function TurnstileCaptcha({ onVerify, onError }: TurnstileCaptchaProps) {
         className="w-full flex justify-center"
         suppressHydrationWarning
       />
-      {!isLoaded && (
+      {!isScriptLoaded && (
         <div className="flex items-center justify-center h-10 w-full rounded-md border border-input bg-background px-3 py-2">
           <div className="text-sm text-gray-500">Loading security verification...</div>
         </div>
@@ -102,4 +109,4 @@ export function TurnstileCaptcha({ onVerify, onError }: TurnstileCaptchaProps) {
       `}</style>
     </div>
   )
-} 
+}

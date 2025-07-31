@@ -117,17 +117,6 @@ Submit waitlist form data.
 }
 \`\`\`
 
-### GET /api/founders-count
-Get current founders count.
-
-**Response:**
-\`\`\`json
-{
-  "count": 45,
-  "remaining": 55
-}
-\`\`\`
-
 ## Database Schema
 
 The \`waitlist\` table structure:

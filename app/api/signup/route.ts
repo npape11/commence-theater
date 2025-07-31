@@ -1,5 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { supabaseAdmin } from "@/lib/supabase-server"
+import { env } from "@/lib/env"
 
 interface SignupData {
   name: string
@@ -14,6 +15,29 @@ interface ValidationError {
   message: string
 }
 
+async function verifyTurnstileToken(token: string, remoteip?: string): Promise<boolean> {
+  try {
+    const formData = new FormData()
+    formData.append("secret", env.TURNSTILE_SECRET_KEY)
+    formData.append("response", token)
+    if (remoteip) {
+      formData.append("remoteip", remoteip)
+    }
+
+    const url = "https://challenges.cloudflare.com/turnstile/v0/siteverify"
+    const result = await fetch(url, {
+      method: "POST",
+      body: formData,
+    })
+
+    const outcome = await result.json()
+    return outcome.success === true
+  } catch (error) {
+    console.error("Turnstile verification error:", error)
+    return false
+  }
+}
+
 function validateSignupData(data: Omit<SignupData, 'captchaToken'>): ValidationError[] {
   const errors: ValidationError[] = []
 
@@ -24,7 +48,7 @@ function validateSignupData(data: Omit<SignupData, 'captchaToken'>): ValidationE
   if (!data.email?.trim()) {
     errors.push({ field: "email", message: "Email is required" })
   } else {
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/
     if (!emailRegex.test(data.email)) {
       errors.push({ field: "email", message: "Please enter a valid email address" })
     }
@@ -102,26 +126,16 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Security verification is required" }, { status: 400 })
     }
 
-    // Verify captcha with Cloudflare
-    try {
-      const captchaResponse = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          secret: process.env.TURNSTILE_SECRET_KEY,
-          response: captchaToken,
-        }),
-      })
+    // Get client IP for additional security
+    const clientIp = request.headers.get('CF-Connecting-IP')
 
-      const captchaResult = await captchaResponse.json()
-      
-      if (!captchaResult.success) {
-        return NextResponse.json({ error: "Security verification failed. Please try again." }, { status: 400 })
-      }
-    } catch (error) {
-      console.error("Captcha verification error:", error)
+    // Verify captcha token
+    const isValidToken = await verifyTurnstileToken(
+      captchaToken,
+      clientIp || undefined
+    )
+
+    if (!isValidToken) {
       return NextResponse.json({ error: "Security verification failed. Please try again." }, { status: 400 })
     }
 

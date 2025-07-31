@@ -11,9 +11,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import { CheckCircle, AlertCircle } from "lucide-react"
 import { TurnstileCaptcha } from "./turnstile-captcha"
 
-interface WaitlistFormProps {
-  foundersRemaining: number
-}
+import { supabase } from "@/lib/supabase-client"
 
 interface FormData {
   name: string
@@ -30,8 +28,9 @@ interface ValidationErrors {
   captcha?: string
 }
 
-export function WaitlistForm({ foundersRemaining }: WaitlistFormProps) {
+export function WaitlistForm() {
   const [isMounted, setIsMounted] = useState(false)
+  const [foundersRemaining, setFoundersRemaining] = useState(100)
   const [formData, setFormData] = useState<FormData>({
     name: "",
     email: "",
@@ -45,6 +44,44 @@ export function WaitlistForm({ foundersRemaining }: WaitlistFormProps) {
 
   useEffect(() => {
     setIsMounted(true)
+
+    // Function to fetch and update counts
+    async function updateCounts() {
+      try {
+        const { count: foundersCount } = await supabase
+          .from("waitlist")
+          .select("id", { count: "exact", head: true })
+          .eq("founders", true)
+
+        const remaining = Math.max(0, 100 - (foundersCount || 0))
+        setFoundersRemaining(remaining)
+      } catch (error) {
+        console.error("Error fetching founders count:", error)
+      }
+    }
+
+    // Get initial count
+    updateCounts()
+
+    // Subscribe to changes
+    const channel = supabase
+      .channel("waitlist-form-founders")
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "waitlist",
+          filter: "founders=true"
+        },
+        // Update counts when any change occurs
+        () => updateCounts()
+      )
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(channel)
+    }
   }, [])
 
   const validateForm = (): ValidationErrors => {

@@ -5,44 +5,45 @@ import { Badge } from "@/components/ui/badge"
 import { Star } from "lucide-react"
 import { supabase } from "@/lib/supabase-client"
 
-interface FoundersBadgeRealtimeProps {
-  initialClaimed: number
-  initialRemaining: number
-}
-
-export function FoundersBadgeRealtime({ initialClaimed, initialRemaining }: FoundersBadgeRealtimeProps) {
-  const [claimed, setClaimed] = useState(initialClaimed)
-  const [remaining, setRemaining] = useState(initialRemaining)
+export function FoundersBadgeRealtime() {
+  const [claimed, setClaimed] = useState(0)
+  const [remaining, setRemaining] = useState(100)
 
   useEffect(() => {
-    // Set up real-time subscription using ANON key only
+    // Function to fetch and update counts
+    async function updateCounts() {
+      try {
+        const { count: foundersCount } = await supabase
+          .from("waitlist")
+          .select("id", { count: "exact", head: true })
+          .eq("founders", true)
+
+        const newClaimed = foundersCount || 0
+        const newRemaining = Math.max(0, 100 - newClaimed)
+
+        setClaimed(newClaimed)
+        setRemaining(newRemaining)
+      } catch (error) {
+        console.error("Error fetching founders count:", error)
+      }
+    }
+
+    // Get initial count
+    updateCounts()
+
+    // Subscribe to changes
     const channel = supabase
-      .channel("waitlist-changes")
+      .channel("waitlist-founders")
       .on(
         "postgres_changes",
         {
           event: "*",
           schema: "public",
           table: "waitlist",
+          filter: "founders=true"
         },
-        async (payload) => {
-          // Real-time update received
-
-          try {
-            const { count: foundersCount } = await supabase
-              .from("waitlist")
-              .select("*", { count: "exact", head: true })
-              .eq("founders", true)
-
-            const newClaimed = foundersCount || 0
-            const newRemaining = Math.max(0, 100 - newClaimed)
-
-            setClaimed(newClaimed)
-            setRemaining(newRemaining)
-          } catch (error) {
-            console.error("Error fetching updated founders count:", error)
-          }
-        },
+        // Just update counts when any change occurs
+        () => updateCounts()
       )
       .subscribe()
 
