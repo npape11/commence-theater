@@ -6,6 +6,7 @@ interface SignupData {
   email: string
   company: string
   tier: string
+  captchaToken: string
 }
 
 interface ValidationError {
@@ -13,7 +14,7 @@ interface ValidationError {
   message: string
 }
 
-function validateSignupData(data: SignupData): ValidationError[] {
+function validateSignupData(data: Omit<SignupData, 'captchaToken'>): ValidationError[] {
   const errors: ValidationError[] = []
 
   if (!data.name?.trim()) {
@@ -88,12 +89,40 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
-    const { name, email, company, tier } = body as SignupData
+    const { name, email, company, tier, captchaToken } = body as SignupData
 
     // Validate all required fields
     const validationErrors = validateSignupData({ name, email, company, tier })
     if (validationErrors.length > 0) {
       return NextResponse.json({ error: getValidationErrorMessage(validationErrors) }, { status: 400 })
+    }
+
+    // Validate captcha token
+    if (!captchaToken) {
+      return NextResponse.json({ error: "Security verification is required" }, { status: 400 })
+    }
+
+    // Verify captcha with Cloudflare
+    try {
+      const captchaResponse = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          secret: process.env.TURNSTILE_SECRET_KEY,
+          response: captchaToken,
+        }),
+      })
+
+      const captchaResult = await captchaResponse.json()
+      
+      if (!captchaResult.success) {
+        return NextResponse.json({ error: "Security verification failed. Please try again." }, { status: 400 })
+      }
+    } catch (error) {
+      console.error("Captcha verification error:", error)
+      return NextResponse.json({ error: "Security verification failed. Please try again." }, { status: 400 })
     }
 
     // Sanitize inputs to prevent XSS

@@ -31,8 +31,8 @@ export function FoundersBadgeHybrid({ initialClaimed, initialRemaining }: Founde
           schema: "public",
           table: "waitlist",
         },
-        async (payload) => {
-          console.log("Real-time update received:", payload)
+                  async (payload) => {
+            // Real-time update received
 
           try {
             const { count: foundersCount } = await supabase

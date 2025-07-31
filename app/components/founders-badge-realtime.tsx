@@ -26,7 +26,7 @@ export function FoundersBadgeRealtime({ initialClaimed, initialRemaining }: Foun
           table: "waitlist",
         },
         async (payload) => {
-          console.log("Real-time update received:", payload)
+          // Real-time update received
 
           try {
             const { count: foundersCount } = await supabase

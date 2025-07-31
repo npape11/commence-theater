@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { CheckCircle, AlertCircle } from "lucide-react"
+import { TurnstileCaptcha } from "./turnstile-captcha"
 
 interface WaitlistFormProps {
   foundersRemaining: number
@@ -26,6 +27,7 @@ interface ValidationErrors {
   email?: string
   company?: string
   tier?: string
+  captcha?: string
 }
 
 export function WaitlistForm({ foundersRemaining }: WaitlistFormProps) {
@@ -36,6 +38,7 @@ export function WaitlistForm({ foundersRemaining }: WaitlistFormProps) {
     company: "",
     tier: "",
   })
+  const [captchaToken, setCaptchaToken] = useState<string>("")
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null)
   const [validationErrors, setValidationErrors] = useState<ValidationErrors>({})
@@ -68,6 +71,10 @@ export function WaitlistForm({ foundersRemaining }: WaitlistFormProps) {
       errors.tier = "Theater Size is required"
     }
 
+    if (!captchaToken) {
+      errors.captcha = "Security verification is required"
+    }
+
     return errors
   }
 
@@ -76,6 +83,7 @@ export function WaitlistForm({ foundersRemaining }: WaitlistFormProps) {
     if (errors.email) return "Email"
     if (errors.company) return "Theater/Organization Name"
     if (errors.tier) return "Theater Size"
+    if (errors.captcha) return "Security Verification"
     return ""
   }
 
@@ -105,7 +113,10 @@ export function WaitlistForm({ foundersRemaining }: WaitlistFormProps) {
           "X-Requested-With": "XMLHttpRequest", // CSRF protection header
         },
         credentials: "same-origin", // Include cookies for CSRF protection
-        body: JSON.stringify(formData),
+        body: JSON.stringify({
+          ...formData,
+          captchaToken,
+        }),
       })
 
       const result = await response.json()
@@ -116,6 +127,7 @@ export function WaitlistForm({ foundersRemaining }: WaitlistFormProps) {
           text: result.message,
         })
         setFormData({ name: "", email: "", company: "", tier: "" })
+        setCaptchaToken("")
         setValidationErrors({})
       } else {
         setMessage({
@@ -143,6 +155,21 @@ export function WaitlistForm({ foundersRemaining }: WaitlistFormProps) {
     if (message?.type === "error") {
       setMessage(null)
     }
+  }
+
+  const handleCaptchaVerify = (token: string) => {
+    setCaptchaToken(token)
+    if (validationErrors.captcha) {
+      setValidationErrors({ ...validationErrors, captcha: undefined })
+    }
+    if (message?.type === "error") {
+      setMessage(null)
+    }
+  }
+
+  const handleCaptchaError = () => {
+    setCaptchaToken("")
+    setValidationErrors({ ...validationErrors, captcha: "Security verification failed. Please try again." })
   }
 
 
@@ -257,6 +284,17 @@ export function WaitlistForm({ foundersRemaining }: WaitlistFormProps) {
               </p>
             )}
           </div>
+
+          {/* Turnstile Captcha */}
+          <TurnstileCaptcha
+            onVerify={handleCaptchaVerify}
+            onError={handleCaptchaError}
+          />
+          {validationErrors.captcha && (
+            <p className="text-sm text-red-600">
+              {validationErrors.captcha}
+            </p>
+          )}
 
           <Button type="submit" className="w-full bg-purple-600 hover:bg-purple-700" disabled={isSubmitting} suppressHydrationWarning>
             {isSubmitting ? "Joining..." : "Join the Waitlist"}
