@@ -163,6 +163,7 @@ export async function POST(request: NextRequest) {
           company: sanitizedCompany,
           tier,
           founders: isFounder,
+          client_ip: clientIp || null,
         },
       ])
       .select()
