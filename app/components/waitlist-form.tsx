@@ -1,7 +1,7 @@
 "use client"
 
 import type React from "react"
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -9,8 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { CheckCircle, AlertCircle } from "lucide-react"
-import { TurnstileCaptcha } from "./turnstile-captcha"
-
+import { TurnstileCaptcha, TurnstileCaptchaHandle } from "./turnstile-captcha"
 import { supabase } from "@/lib/supabase-client"
 
 interface FormData {
@@ -42,10 +41,11 @@ export function WaitlistForm() {
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null)
   const [validationErrors, setValidationErrors] = useState<ValidationErrors>({})
 
+  const captchaRef = useRef<TurnstileCaptchaHandle>(null)
+
   useEffect(() => {
     setIsMounted(true)
 
-    // Function to fetch and update counts
     async function updateCounts() {
       try {
         const { count: foundersCount } = await supabase
@@ -60,10 +60,8 @@ export function WaitlistForm() {
       }
     }
 
-    // Get initial count
     updateCounts()
 
-    // Subscribe to changes
     const channel = supabase
       .channel("waitlist-form-founders")
       .on(
@@ -74,7 +72,6 @@ export function WaitlistForm() {
           table: "waitlist",
           filter: "founders=true"
         },
-        // Update counts when any change occurs
         () => updateCounts()
       )
       .subscribe()
@@ -147,9 +144,9 @@ export function WaitlistForm() {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "X-Requested-With": "XMLHttpRequest", // CSRF protection header
+          "X-Requested-With": "XMLHttpRequest",
         },
-        credentials: "same-origin", // Include cookies for CSRF protection
+        credentials: "same-origin",
         body: JSON.stringify({
           ...formData,
           captchaToken,
@@ -166,17 +163,20 @@ export function WaitlistForm() {
         setFormData({ name: "", email: "", company: "", tier: "" })
         setCaptchaToken("")
         setValidationErrors({})
+        captchaRef.current?.reset()
       } else {
         setMessage({
           type: "error",
           text: result.error || "Something went wrong. Please try again.",
         })
+        captchaRef.current?.reset()
       }
     } catch (error) {
       setMessage({
         type: "error",
         text: "Network error. Please check your connection and try again.",
       })
+      captchaRef.current?.reset()
     } finally {
       setIsSubmitting(false)
     }
@@ -209,8 +209,6 @@ export function WaitlistForm() {
     setValidationErrors({ ...validationErrors, captcha: "Security verification failed. Please try again." })
   }
 
-
-
   return (
     <Card className="w-full max-w-md mx-auto">
       <CardHeader className="px-4 sm:px-6">
@@ -221,10 +219,9 @@ export function WaitlistForm() {
       </CardHeader>
       <CardContent className="px-4 sm:px-6">
         <form onSubmit={handleSubmit} className="space-y-4" noValidate>
+          {/* Name Field */}
           <div className="space-y-2">
-            <Label htmlFor="name">
-              Full Name <span className="text-red-500">*</span>
-            </Label>
+            <Label htmlFor="name">Full Name <span className="text-red-500">*</span></Label>
             <Input
               id="name"
               type="text"
@@ -238,16 +235,13 @@ export function WaitlistForm() {
               suppressHydrationWarning
             />
             {validationErrors.name && (
-              <p id="name-error" className="text-sm text-red-600">
-                {validationErrors.name}
-              </p>
+              <p id="name-error" className="text-sm text-red-600">{validationErrors.name}</p>
             )}
           </div>
 
+          {/* Email Field */}
           <div className="space-y-2">
-            <Label htmlFor="email">
-              Email <span className="text-red-500">*</span>
-            </Label>
+            <Label htmlFor="email">Email <span className="text-red-500">*</span></Label>
             <Input
               id="email"
               type="email"
@@ -261,16 +255,13 @@ export function WaitlistForm() {
               suppressHydrationWarning
             />
             {validationErrors.email && (
-              <p id="email-error" className="text-sm text-red-600">
-                {validationErrors.email}
-              </p>
+              <p id="email-error" className="text-sm text-red-600">{validationErrors.email}</p>
             )}
           </div>
 
+          {/* Company Field */}
           <div className="space-y-2">
-            <Label htmlFor="company">
-              Theater/Organization Name <span className="text-red-500">*</span>
-            </Label>
+            <Label htmlFor="company">Theater/Organization Name <span className="text-red-500">*</span></Label>
             <Input
               id="company"
               type="text"
@@ -285,16 +276,13 @@ export function WaitlistForm() {
               suppressHydrationWarning
             />
             {validationErrors.company && (
-              <p id="company-error" className="text-sm text-red-600">
-                {validationErrors.company}
-              </p>
+              <p id="company-error" className="text-sm text-red-600">{validationErrors.company}</p>
             )}
           </div>
 
+          {/* Tier Field */}
           <div className="space-y-2">
-            <Label htmlFor="tier">
-              Theater Size <span className="text-red-500">*</span>
-            </Label>
+            <Label htmlFor="tier">Theater Size <span className="text-red-500">*</span></Label>
             <Select
               value={formData.tier}
               onValueChange={(value) => handleInputChange("tier", value)}
@@ -316,24 +304,26 @@ export function WaitlistForm() {
               </SelectContent>
             </Select>
             {validationErrors.tier && (
-              <p id="tier-error" className="text-sm text-red-600">
-                {validationErrors.tier}
-              </p>
+              <p id="tier-error" className="text-sm text-red-600">{validationErrors.tier}</p>
             )}
           </div>
 
           {/* Turnstile Captcha */}
           <TurnstileCaptcha
+            ref={captchaRef}
             onVerify={handleCaptchaVerify}
             onError={handleCaptchaError}
           />
           {validationErrors.captcha && (
-            <p className="text-sm text-red-600">
-              {validationErrors.captcha}
-            </p>
+            <p className="text-sm text-red-600">{validationErrors.captcha}</p>
           )}
 
-          <Button type="submit" className="w-full bg-purple-600 hover:bg-purple-700" disabled={isSubmitting} suppressHydrationWarning>
+          <Button
+            type="submit"
+            className="w-full bg-purple-600 hover:bg-purple-700"
+            disabled={isSubmitting}
+            suppressHydrationWarning
+          >
             {isSubmitting ? "Joining..." : "Join the Waitlist"}
           </Button>
         </form>

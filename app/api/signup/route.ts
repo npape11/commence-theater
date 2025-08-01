@@ -66,28 +66,19 @@ function validateSignupData(data: Omit<SignupData, 'captchaToken'>): ValidationE
 }
 
 function getValidationErrorMessage(errors: ValidationError[]): string {
-  if (errors.length === 1) {
-    return errors[0].message
-  }
+  if (errors.length === 1) return errors[0].message
 
   const fieldNames = errors.map((error) => {
     switch (error.field) {
-      case "name":
-        return "Full Name"
-      case "email":
-        return "Email"
-      case "company":
-        return "Theater/Organization Name"
-      case "tier":
-        return "Theater Size"
-      default:
-        return error.field
+      case "name": return "Full Name"
+      case "email": return "Email"
+      case "company": return "Theater/Organization Name"
+      case "tier": return "Theater Size"
+      default: return error.field
     }
   })
 
-  if (fieldNames.length === 2) {
-    return `${fieldNames[0]} and ${fieldNames[1]} are required`
-  }
+  if (fieldNames.length === 2) return `${fieldNames[0]} and ${fieldNames[1]} are required`
 
   const lastField = fieldNames.pop()
   return `${fieldNames.join(", ")}, and ${lastField} are required`
@@ -95,18 +86,15 @@ function getValidationErrorMessage(errors: ValidationError[]): string {
 
 export async function POST(request: NextRequest) {
   try {
-    // Validate request method
     if (request.method !== 'POST') {
       return NextResponse.json({ error: 'Method not allowed' }, { status: 405 })
     }
 
-    // Validate content type
     const contentType = request.headers.get('content-type')
     if (!contentType || !contentType.includes('application/json')) {
       return NextResponse.json({ error: 'Content-Type must be application/json' }, { status: 400 })
     }
 
-    // Basic CSRF protection - check for AJAX request header
     const requestedWith = request.headers.get('x-requested-with')
     if (!requestedWith || requestedWith !== 'XMLHttpRequest') {
       return NextResponse.json({ error: 'Invalid request' }, { status: 403 })
@@ -115,21 +103,22 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const { name, email, company, tier, captchaToken } = body as SignupData
 
-    // Validate all required fields
     const validationErrors = validateSignupData({ name, email, company, tier })
     if (validationErrors.length > 0) {
       return NextResponse.json({ error: getValidationErrorMessage(validationErrors) }, { status: 400 })
     }
 
-    // Validate captcha token
     if (!captchaToken) {
       return NextResponse.json({ error: "Security verification is required" }, { status: 400 })
     }
 
-    // Get client IP for additional security
-    const clientIp = request.headers.get('CF-Connecting-IP')
+    const clientIp =
+      request.headers.get("cf-connecting-ip") ||
+      request.headers.get("x-forwarded-for")?.split(",")[0].trim() ||
+      request.headers.get("x-real-ip") ||
+      request.headers.get("fastly-client-ip") ||
+      null
 
-    // Verify captcha token
     const isValidToken = await verifyTurnstileToken(
       captchaToken,
       clientIp || undefined
@@ -139,13 +128,26 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Security verification failed. Please try again." }, { status: 400 })
     }
 
-    // Sanitize inputs to prevent XSS
+    // Rate limiter
+    const rateLimitSince = new Date(Date.now() - 5 * 60 * 1000).toISOString()
+    const { count: recentCount, error: rateLimitError } = await supabaseAdmin
+      .from("waitlist")
+      .select("id", { count: "exact", head: true })
+      .eq("client_ip", clientIp)
+      .gt("created_at", rateLimitSince)
+
+    if (rateLimitError) {
+      console.error("Rate limit check error:", rateLimitError)
+    }
+
+    if ((recentCount || 0) >= 3) {
+      return NextResponse.json({ error: "Rate limit exceeded. Please try again later." }, { status: 429 })
+    }
+
     const sanitizedName = name.trim().replace(/[<>]/g, '')
     const sanitizedEmail = email.trim().toLowerCase().replace(/[<>]/g, '')
     const sanitizedCompany = company.trim().replace(/[<>]/g, '')
 
-    // Use service role key ONLY in API routes for database writes
-    // Check current founders count
     const { count: foundersCount } = await supabaseAdmin
       .from("waitlist")
       .select("*", { count: "exact", head: true })
@@ -153,7 +155,6 @@ export async function POST(request: NextRequest) {
 
     const isFounder = (foundersCount || 0) < 100
 
-    // Insert new waitlist entry
     const { data, error } = await supabaseAdmin
       .from("waitlist")
       .insert([
@@ -170,10 +171,8 @@ export async function POST(request: NextRequest) {
 
     if (error) {
       if (error.code === "23505") {
-        // Unique constraint violation
         return NextResponse.json({ error: "This email is already registered" }, { status: 409 })
       }
-      // Log the actual error for debugging but don't expose it to client
       console.error("Database error:", error)
       return NextResponse.json({ error: "Registration failed. Please try again later." }, { status: 500 })
     }
@@ -188,7 +187,6 @@ export async function POST(request: NextRequest) {
       message: welcomeMessage,
     })
   } catch (error) {
-    // Log the actual error for debugging but don't expose it to client
     console.error("Signup error:", error)
     return NextResponse.json({ error: "Registration failed. Please try again later." }, { status: 500 })
   }
